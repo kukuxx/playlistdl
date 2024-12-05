@@ -1,40 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Downloader</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="container">
-        <!-- Admin button in the top right corner -->
-	<button id="adminButton" onclick="handleAdminButton()">Admin</button>
-
+        <button id="adminButton" onclick="handleAdminButton()">Admin</button>
         <h1>Audio Downloader</h1>
-        <div id="adminMessage" style="display: none; color: red; font-weight: bold;">
-    	Now downloading directly to your server!
-	</div>
-	<input type="text" id="spotifyLink" placeholder="Paste your song link or playlist link here">
+        <div id="adminMessage" class="admin-message" style="display: none;">
+            Now downloading directly to your server!
+        </div>
+
+        <div class="input-wrapper">
+            <div class="input-container">
+                <input type="text" id="inputLink" placeholder="Paste your Spotify or YouTube link here">
+                <button class="clear-input" title="Clear input">✕</button>
+            </div>
+        </div>
+
         <button onclick="download()">Download</button>
-
-        <!-- Progress bar -->
-        <progress id="progress" value="0" max="100" style="display:none;"></progress>
-
+        <progress id="progress" value="0" max="100" style="display:none; width: 100%; height: 20px;"
+            aria-label="Download progress"></progress>
         <div id="result"></div>
-
-        <!-- Logs section -->
         <div id="logs" class="logs"></div>
     </div>
 
-    <!-- Login modal for admin access -->
-    <!-- Login modal for admin access -->
-    <div id="loginModal" class="modal">
+    <div id="loginModal" class="modal" role="dialog" aria-labelledby="modalTitle" aria-hidden="true">
+        <div class="modal-overlay" onclick="closeLoginModal()"></div>
         <div class="modal-content">
-            <span onclick="closeLoginModal()" class="close">&times;</span>
-            <h2>Admin Login</h2>
-            <input type="text" id="username" placeholder="Username">
-            <input type="password" id="password" placeholder="Password">
+            <span onclick="closeLoginModal()" class="close" aria-label="Close">&times;</span>
+            <h2 id="modalTitle">Admin Login</h2>
+
+            <div class="input-container">
+                <input type="text" id="username" placeholder="Username">
+                <button class="clear-input" title="Clear username">✕</button>
+            </div>
+
+            <div class="password-container">
+                <input type="password" id="password" placeholder="Password">
+                <span id="togglePassword" class="toggle-password">👁️</span>
+            </div>
+
             <button onclick="login()">Login</button>
             <div id="loginMessage"></div>
         </div>
@@ -42,5 +53,5 @@
 
     <script src="script.js"></script>
 </body>
-</html>
 
+</html>

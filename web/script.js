@@ -1,65 +1,104 @@
-console.log("Script loaded"); // Add this line at the beginning of script.js
+console.log("Script loaded");
+
+document.addEventListener('DOMContentLoaded', function () {
+    // 添加清除功能
+    document.querySelectorAll('.input-container').forEach(container => {
+        const input = container.querySelector('input');
+        const clearButton = container.querySelector('.clear-input');
+
+        if (input && clearButton) {
+            input.addEventListener('input', function () {
+                clearButton.style.display = this.value ? 'block' : 'none';
+            });
+
+            // 清除按鈕點擊事件
+            clearButton.addEventListener('click', function () {
+                input.value = '';
+                this.style.display = 'none';
+                input.focus();
+            });
+
+            clearButton.style.display = input.value ? 'block' : 'none';
+        }
+    });
+
+    const passwordToggle = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+
+    if (passwordToggle && passwordInput) {
+        passwordToggle.addEventListener('click', function () {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.textContent = type === 'password' ? '👁️' : '👁️‍🗨️';
+        });
+    }
+});
 
 async function download() {
-    const spotifyLink = document.getElementById('spotifyLink').value;
+    const inputLink = document.getElementById('inputLink').value;
 
-    if (!spotifyLink) {
-        document.getElementById('result').innerText = "Please enter a Spotify link.";
+    if (!inputLink) {
+        document.getElementById('result').innerText = "Please enter a valid link.";
         return;
     }
 
-    // Clear previous logs and result
+    // 判斷連結類型
+    const isSpotify = /spotify\.com/.test(inputLink);
+    const isYouTube = /youtube\.com|youtu\.be/.test(inputLink);
+
+    if (!isSpotify && !isYouTube) {
+        document.getElementById('result').innerText =
+            "The link you provided is not recognized. Please enter a Spotify or YouTube link.";
+        return;
+    }
+
+    // 決定請求的伺服器端點
+    const endpoint = isSpotify
+        ? `/download?spotify_link=${encodeURIComponent(inputLink)}`
+        : `/download?youtube_link=${encodeURIComponent(inputLink)}`;
+
+    const eventSource = new EventSource(endpoint);
+
+    // 清除舊的日誌和進度條
     const logsElement = document.getElementById('logs');
     logsElement.innerHTML = "";
     document.getElementById('result').innerText = "";
 
-    // Show and reset the progress bar
     const progressBar = document.getElementById('progress');
     progressBar.style.display = 'block';
     progressBar.value = 0;
-    const increment = 10; // Smaller increment for more gradual progress
+    const increment = 10;
 
-    // Create an EventSource to listen to the server-sent events
-    const eventSource = new EventSource(`/download?spotify_link=${encodeURIComponent(spotifyLink)}`);
-
-    eventSource.onmessage = function(event) {
+    // 處理伺服器的事件訊息
+    eventSource.onmessage = function (event) {
         const log = event.data;
-        
-        if (log.startsWith("DOWNLOAD:")) {
-            // Download link received, set progress to 100%
-            progressBar.value = 100;
 
+        if (log.startsWith("DOWNLOAD:")) {
+            progressBar.value = 100;
             const path = log.split("DOWNLOAD: ")[1];
             const downloadLink = document.createElement('a');
             downloadLink.href = `/downloads/${path}`;
-            downloadLink.download = path.split('/').pop(); // Extract the filename for download
+            downloadLink.download = path.split('/').pop();
             downloadLink.innerText = "Click to download your file";
             document.getElementById('result').appendChild(downloadLink);
             downloadLink.click();
 
-            // Close the EventSource and hide the progress bar
             eventSource.close();
             progressBar.style.display = 'none';
-        } else if (log.includes("Download completed") || log.includes("Download process completed successfully")) {
-            // Show a success message in logs
+        } else if (log.includes("Download completed")) {
             logsElement.innerHTML += "Download completed successfully.<br>";
         } else if (log.startsWith("Error")) {
-            // Display error message and close EventSource
             document.getElementById('result').innerText = `Error: ${log}`;
             eventSource.close();
             progressBar.style.display = 'none';
         } else {
-            // Increase progress gradually
             progressBar.value = Math.min(progressBar.value + increment, 95);
-
-            // Append log output to logs section
             logsElement.innerHTML += log + "<br>";
             logsElement.scrollTop = logsElement.scrollHeight;
         }
     };
 
-    eventSource.onerror = function() {
-        // Only show error if no success message was received
+    eventSource.onerror = function () {
         if (!logsElement.innerHTML.includes("Download completed successfully")) {
             document.getElementById('result').innerText = "Error occurred while downloading.";
         }
@@ -67,55 +106,64 @@ async function download() {
         eventSource.close();
     };
 }
-// Function to handle the Admin / Log Out button behavior
+
 function handleAdminButton() {
     if (document.getElementById('adminButton').innerText === "Admin") {
-        showLoginModal();  // Show login modal if not logged in
+        showLoginModal();
     } else {
-        logout();  // Log out if already logged in
+        logout();
     }
 }
 
-// Show login modal
 function showLoginModal() {
     const loginModal = document.getElementById('loginModal');
-    loginModal.classList.add('show');  // Show modal on button click
+    loginModal.classList.add('show');
+
+    // 清除之前的輸入
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('loginMessage').innerText = '';
+
+    // 重置密碼顯示狀態
+    document.getElementById('password').type = 'password';
+    document.getElementById('togglePassword').textContent = '👁️';
+
+    // 隱藏所有清除按鈕
+    document.querySelectorAll('.clear-input').forEach(button => {
+        button.style.display = 'none';
+    });
 }
 
-// Hide login modal
 function closeLoginModal() {
     const loginModal = document.getElementById('loginModal');
-    loginModal.classList.remove('show');  // Hide modal when closed
+    loginModal.classList.remove('show');
 }
 
-// Check login status, toggle button text, and show/hide admin message
 async function checkLoginStatus() {
     const response = await fetch('/check-login');
-    const data = await response.json();  
+    const data = await response.json();
     const adminButton = document.getElementById('adminButton');
-    const adminMessage = document.getElementById('adminMessage');  // Select the message element
+    const adminMessage = document.getElementById('adminMessage');
 
     if (data.loggedIn) {
         adminButton.innerText = "Log Out";
-        adminMessage.style.display = "block";  // Show the message when logged in
+        adminMessage.style.display = "block";
     } else {
         adminButton.innerText = "Admin";
-        adminMessage.style.display = "none";   // Hide the message when logged out
+        adminMessage.style.display = "none";
     }
 }
 
-// Log out function
 async function logout() {
     const response = await fetch('/logout', { method: 'POST' });
     const data = await response.json();
 
     if (data.success) {
-        document.getElementById('adminButton').innerText = "Admin";  // Reset button text
-        document.getElementById('adminMessage').style.display = "none";  // Hide the message on logout
+        document.getElementById('adminButton').innerText = "Admin";
+        document.getElementById('adminMessage').style.display = "none";
     }
 }
 
-// After successful login, change button text to "Log Out" and show the message
 async function login() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
@@ -129,14 +177,14 @@ async function login() {
     const data = await response.json();
     if (data.success) {
         document.getElementById('loginMessage').innerText = "Login successful!";
-        document.getElementById('adminButton').innerText = "Log Out";  // Update button text
-        document.getElementById('adminMessage').style.display = "block";  // Show the message on login
+        document.getElementById('adminButton').innerText = "Log Out";
+        document.getElementById('adminMessage').style.display = "block";
         closeLoginModal();
     } else {
         document.getElementById('loginMessage').innerText = "Login failed. Try again.";
     }
 }
 
-// Call checkLoginStatus on page load to set initial button state and message visibility
-window.onload = checkLoginStatus;
-
+window.onload = function () {
+    checkLoginStatus();
+};
