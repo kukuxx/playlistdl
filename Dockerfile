@@ -2,7 +2,7 @@
 FROM python:3.12-alpine
 
 # Install dependencies
-RUN apk add --no-cache ca-certificates curl python3-dev git ffmpeg yt-dlp
+RUN apk add --no-cache python3-dev git ca-certificates curl ffmpeg yt-dlp
 
 # Set up a virtual environment for dependencies
 RUN python3 -m venv /opt/venv

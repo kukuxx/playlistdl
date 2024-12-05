@@ -1,65 +1,71 @@
 console.log("Script loaded"); // Add this line at the beginning of script.js
 
 async function download() {
-    const spotifyLink = document.getElementById('spotifyLink').value;
+    const inputLink = document.getElementById('inputLink').value;
 
-    if (!spotifyLink) {
-        document.getElementById('result').innerText = "Please enter a Spotify link.";
+    if (!inputLink) {
+        document.getElementById('result').innerText = "Please enter a valid link.";
         return;
     }
 
-    // Clear previous logs and result
+    // 判斷連結類型
+    const isSpotify = /spotify\.com/.test(inputLink);
+    const isYouTube = /youtube\.com|youtu\.be/.test(inputLink);
+
+    if (!isSpotify && !isYouTube) {
+        document.getElementById('result').innerText =
+            "The link you provided is not recognized. Please enter a Spotify or YouTube link.";
+        return;
+    }
+
+    // 決定請求的伺服器端點
+    const endpoint = isSpotify
+        ? `/download?spotify_link=${encodeURIComponent(inputLink)}`
+        : `/download?youtube_link=${encodeURIComponent(inputLink)}`;
+
+    // 初始化 EventSource
+    const eventSource = new EventSource(endpoint);
+
+    // 清除舊的日誌和進度條
     const logsElement = document.getElementById('logs');
     logsElement.innerHTML = "";
     document.getElementById('result').innerText = "";
 
-    // Show and reset the progress bar
     const progressBar = document.getElementById('progress');
     progressBar.style.display = 'block';
     progressBar.value = 0;
-    const increment = 10; // Smaller increment for more gradual progress
+    const increment = 10;
 
-    // Create an EventSource to listen to the server-sent events
-    const eventSource = new EventSource(`/download?spotify_link=${encodeURIComponent(spotifyLink)}`);
-
-    eventSource.onmessage = function(event) {
+    // 處理伺服器的事件訊息
+    eventSource.onmessage = function (event) {
         const log = event.data;
-        
-        if (log.startsWith("DOWNLOAD:")) {
-            // Download link received, set progress to 100%
-            progressBar.value = 100;
 
+        if (log.startsWith("DOWNLOAD:")) {
+            progressBar.value = 100;
             const path = log.split("DOWNLOAD: ")[1];
             const downloadLink = document.createElement('a');
             downloadLink.href = `/downloads/${path}`;
-            downloadLink.download = path.split('/').pop(); // Extract the filename for download
+            downloadLink.download = path.split('/').pop();
             downloadLink.innerText = "Click to download your file";
             document.getElementById('result').appendChild(downloadLink);
             downloadLink.click();
 
-            // Close the EventSource and hide the progress bar
             eventSource.close();
             progressBar.style.display = 'none';
-        } else if (log.includes("Download completed") || log.includes("Download process completed successfully")) {
-            // Show a success message in logs
+        } else if (log.includes("Download completed")) {
             logsElement.innerHTML += "Download completed successfully.<br>";
         } else if (log.startsWith("Error")) {
-            // Display error message and close EventSource
             document.getElementById('result').innerText = `Error: ${log}`;
             eventSource.close();
             progressBar.style.display = 'none';
         } else {
-            // Increase progress gradually
             progressBar.value = Math.min(progressBar.value + increment, 95);
-
-            // Append log output to logs section
             logsElement.innerHTML += log + "<br>";
             logsElement.scrollTop = logsElement.scrollHeight;
         }
     };
 
-    eventSource.onerror = function() {
-        // Only show error if no success message was received
+    eventSource.onerror = function () {
         if (!logsElement.innerHTML.includes("Download completed successfully")) {
             document.getElementById('result').innerText = "Error occurred while downloading.";
         }
@@ -67,6 +73,7 @@ async function download() {
         eventSource.close();
     };
 }
+
 // Function to handle the Admin / Log Out button behavior
 function handleAdminButton() {
     if (document.getElementById('adminButton').innerText === "Admin") {
@@ -91,7 +98,7 @@ function closeLoginModal() {
 // Check login status, toggle button text, and show/hide admin message
 async function checkLoginStatus() {
     const response = await fetch('/check-login');
-    const data = await response.json();  
+    const data = await response.json();
     const adminButton = document.getElementById('adminButton');
     const adminMessage = document.getElementById('adminMessage');  // Select the message element
 
@@ -136,6 +143,22 @@ async function login() {
         document.getElementById('loginMessage').innerText = "Login failed. Try again.";
     }
 }
+
+// 切換顯示/隱藏密碼
+document.getElementById('togglePassword').addEventListener('click', function () {
+    const passwordField = document.getElementById('password');
+    const toggleButton = this;
+
+    // 切換密碼框類型
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        toggleButton.innerHTML = '&#128065;'; // 眼睛打開的符號
+    } else {
+        passwordField.type = 'password';
+        toggleButton.innerHTML = '&#128065;'; // 眼睛關閉的符號
+    }
+});
+
 
 // Call checkLoginStatus on page load to set initial button state and message visibility
 window.onload = checkLoginStatus;
